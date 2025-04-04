@@ -151,7 +151,7 @@ export const pdf: Tool = {
     const numericWidth = validatedParams.width ?? 1400;
     const fileName = validatedParams.fileName ?? defaultFileName;
 
-    const filePath = path.join(saveDir, sanitizeForFilePath(fileName + '.pdf'));
+    const filePath = path.join(saveDir, sanitizeForFilePath(fileName) + '.pdf');
 
     await tab.page.setViewportSize({ width: numericWidth, height: 800 });
 
