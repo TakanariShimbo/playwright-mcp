@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import os from 'os';
 import path from 'path';
 
 import { z } from 'zod';
@@ -125,7 +124,16 @@ export const pressKey: (captureSnapshot: boolean) => Tool = captureSnapshot => (
   },
 });
 
-const pdfSchema = z.object({});
+const pdfSchema = z.object({
+  width: z
+    .number()
+    .optional()
+    .describe('The width of the PDF in pixels. Defaults to 1400 if not set (e.g. 800).'),
+  fileName: z
+    .string()
+    .optional()
+    .describe('The desired filename for the PDF output. If not provided, it defaults to "page-<timestamp>".'),
+});
 
 export const pdf: Tool = {
   schema: {
@@ -133,15 +141,41 @@ export const pdf: Tool = {
     description: 'Save page as PDF',
     inputSchema: zodToJsonSchema(pdfSchema),
   },
-  handle: async context => {
+  handle: async (context, params) => {
+    const validatedParams = pdfSchema.parse(params);
     const tab = context.currentTab();
-    const fileName = path.join(os.tmpdir(), sanitizeForFilePath(`page-${new Date().toISOString()}`)) + '.pdf';
-    await tab.page.pdf({ path: fileName });
+
+    const saveDir = 'C:/Users/User/mcp_projects/shared';
+    const defaultFileName = `page-${new Date().toISOString()}`;
+    
+    const numericWidth = validatedParams.width ?? 1400;
+    const fileName = validatedParams.fileName ?? defaultFileName;
+
+    const filePath = path.join(saveDir, sanitizeForFilePath(fileName + '.pdf'));
+
+    await tab.page.setViewportSize({ width: numericWidth, height: 800 });
+
+    const scrollHeight = await tab.page.evaluate(() => {
+      return Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+      );
+    });
+
+    await tab.page.pdf({
+      path: filePath,
+      printBackground: true,
+      width: `${numericWidth}px`,
+      height: `${scrollHeight}px`,
+    });
+
     return {
-      content: [{
-        type: 'text',
-        text: `Saved as ${fileName}`,
-      }],
+      content: [
+        {
+          type: 'text',
+          text: `Saved as ${filePath} with width set to ${numericWidth}px.`,
+        },
+      ],
     };
   },
 };
